@@ -108,7 +108,7 @@ export const TaskInstance = () => {
     undefined,
     {
       enabled: !isNaN(parsedMapIndex),
-      refetchInterval: (query) => (isStatePending(query.state.data?.state) ? refetchInterval : false),
+      refetchInterval: (query) => isStatePending(query.state.data?.state) && refetchInterval,
       staleTime: 0,
     },
   );
@@ -137,12 +137,12 @@ export const TaskInstance = () => {
 
   const { tabs: requiredActionTabs } = useRequiredActionTabs({ dagId, dagRunId: runId, taskId }, newTabs, {
     autoRedirect: true,
-    refetchInterval: isStatePending(taskInstance?.state) ? refetchInterval : false,
+    refetchInterval: isStatePending(taskInstance?.state) && refetchInterval,
   });
 
   const { tabs: displayTabs } = useHITLReviewTabs({ dagId, dagRunId: runId, taskId }, requiredActionTabs, {
     mapIndex: parsedMapIndex,
-    refetchInterval: isStatePending(taskInstance?.state) ? refetchInterval : false,
+    refetchInterval: isStatePending(taskInstance?.state) && refetchInterval,
   });
 
   return (

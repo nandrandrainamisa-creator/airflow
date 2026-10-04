@@ -72,13 +72,11 @@ export const getTaskInstanceAdditionalPath = (pathname: string): string => {
     }
 
     // Include paths from children of pathless layout routes (e.g. StoragePage wrapping task-store and xcom)
-    if ("children" in route && Array.isArray(route.children)) {
-      return route.children
-        .filter((child) => "path" in child && typeof child.path === "string")
-        .map((child) => child.path);
-    }
-
-    return [];
+    return "children" in route && Array.isArray(route.children)
+      ? route.children
+          .filter((child) => "path" in child && typeof child.path === "string")
+          .map((child) => child.path)
+      : [];
   });
   // Look for patterns like /tasks/{taskId}/mapped/{mapIndex}/{sub-route}
   const mappedRegex = /\/tasks\/[^/]+\/mapped\/[^/]+\/(?<subRoute>.+)$/u;
@@ -153,11 +151,7 @@ export const getSafeExternalUrl = (url: string): string | undefined => {
     return trimmed;
   }
 
-  if (SAFE_EXTERNAL_URL_SCHEMES.has(parsed.protocol)) {
-    return trimmed;
-  }
-
-  return undefined;
+  return SAFE_EXTERNAL_URL_SCHEMES.has(parsed.protocol) ? trimmed : undefined;
 };
 
 export const buildTaskInstanceUrl = (params: {
