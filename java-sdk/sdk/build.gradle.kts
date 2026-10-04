@@ -815,3 +815,12 @@ publishing {
         }
     }
 }
+
+// Prints the classpath that runs the conformance serializer, for
+// java-sdk/scripts/ci/prek/check_serialization_conformance.py.
+tasks.register("printConformanceClasspath") {
+    dependsOn("testClasses")
+    // Capture early to keep compatibility to the Gradle configuration cache.
+    val classpath = sourceSets.test.get().runtimeClasspath
+    doLast { println(classpath.asPath) }
+}
