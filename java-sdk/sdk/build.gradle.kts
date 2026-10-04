@@ -481,9 +481,9 @@ abstract class GenerateDagDslTask : DefaultTask() {
         (excludedTaskKeys - excludedSeen).takeIf { it.isNotEmpty() }?.let {
             throw GradleException("Excluded task keys match no eligible schema property; remove or fix: $it")
         }
-        // "id"/"to" name the annotations' structural attributes, so a schema
-        // key camel-casing to either would silently shadow them.
-        (dagFields + taskFields).firstOrNull { it.attribute == "id" || it.attribute == "to" }?.let {
+        // "id", "to" and "group" name the annotations' structural attributes, so
+        // a schema key camel-casing to one would silently shadow it.
+        (dagFields + taskFields).firstOrNull { it.attribute in setOf("id", "to", "group") }?.let {
             throw GradleException("Schema key '${it.key}' collides with a structural annotation attribute")
         }
 
@@ -560,6 +560,12 @@ abstract class GenerateDagDslTask : DefaultTask() {
             |  annotation class Task(
             |    /** Task ID. Empty derives it from the annotated function's name. */
             |    val id: String = "",
+            |    /**
+            |     * Full ID of the task group the task belongs to, such as
+            |     * `staging.checks`. The task's ID is then `<group>.<id>`. Empty puts
+            |     * the task in no group.
+            |     */
+            |    val group: String = "",
             |${attrLines(taskFields)}
             |  )
             |

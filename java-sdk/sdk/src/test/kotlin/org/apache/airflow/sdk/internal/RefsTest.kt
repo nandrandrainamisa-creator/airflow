@@ -155,4 +155,33 @@ internal class RefsTest {
 
     assertEquals("Dag wiring is already being recorded on this thread", error.message)
   }
+
+  @Test
+  @DisplayName("Should register a grouped task in its group, with the groups made before the wiring runs")
+  fun shouldRegisterGroupedTaskInGroup() {
+    val dag = DagDef("d")
+    Refs.record(dag, listOf("extract", "staging.checks.nulls"), mapOf("staging.checks.nulls" to "staging.checks")) {
+      val extract = Refs.node<Unit>(TaskDef("extract", NoopRefTask::class.java))
+      extract.before(Refs.group("staging"))
+      Refs.node<Unit>(TaskDef("staging.checks.nulls", NoopRefTask::class.java))
+    }
+
+    assertEquals(listOf("staging", "staging.checks"), dag.groups.keys.toList())
+    assertEquals(listOf("staging.checks.nulls"), dag.groups.getValue("staging.checks").taskIds)
+    assertEquals(1, dag.groupEdges.size)
+  }
+
+  @Test
+  @DisplayName("Should fail naming a group that no task of the Dag names")
+  fun shouldFailOnUnknownGroup() {
+    val error =
+      assertThrows(IllegalArgumentException::class.java) {
+        Refs.record(DagDef("d"), emptyList()) { Refs.group("staging") }
+      }
+
+    assertEquals(
+      "Dag 'd' has no task group 'staging'; a group exists once a @Builder.Task names it",
+      error.message,
+    )
+  }
 }

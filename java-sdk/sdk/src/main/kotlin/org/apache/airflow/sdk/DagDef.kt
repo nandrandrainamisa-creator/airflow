@@ -50,6 +50,14 @@ class DagDef(
   internal val tasks = linkedMapOf<String, TaskDef>()
   internal val dagConfig = linkedMapOf<String, Any>()
 
+  /** Task groups keyed by their full ID, parents before the groups nested in them. */
+  internal val groups = linkedMapOf<String, TaskGroupRef>()
+
+  /** Edges with a task group at either end, each a [TaskDef] or [TaskGroupRef], in the order drawn. */
+  internal val groupEdges = linkedSetOf<Pair<Any, Any>>()
+
+  private var groupEdgesExpanded = false
+
   /**
    * Sets one Dag-level configuration value.
    *
@@ -133,11 +141,99 @@ class DagDef(
     task.owner?.let { owner ->
       throw IllegalArgumentException("Task '${task.id}' already belongs to Dag '${owner.id}'")
     }
+    require(task.id !in groups) { "Dag '$id' already has a task group with ID: ${task.id}" }
     require(tasks.putIfAbsent(task.id, task) == null) {
       "Tasks in Dag have duplicate ID: ${task.id}"
     }
     task.owner = this
     return this
+  }
+
+  /**
+   * Declares a task group of this Dag.
+   *
+   * ```java
+   * var staging = dag.taskGroup("staging");
+   * var stage = staging.task("stage", Stage.class); // task "staging.stage"
+   * extract.before(staging);
+   * ```
+   *
+   * @param id Group ID. Must contain only ASCII letters, digits, underscores,
+   *    or dashes, and differ from every task and group ID in this Dag.
+   * @return The group, to declare tasks in and to wire edges with.
+   * @throws IllegalArgumentException if [id] is not a valid group ID, or the
+   *    Dag already has a task or task group with that ID.
+   */
+  fun taskGroup(id: String): TaskGroupRef = addGroup(null, id)
+
+  internal fun addGroup(
+    parent: TaskGroupRef?,
+    localId: String,
+  ): TaskGroupRef {
+    require(GROUP_ID.matches(localId)) {
+      "Task group ID '$localId' must contain only ASCII letters, digits, underscores, or dashes"
+    }
+    val groupId = parent?.qualify(localId) ?: localId
+    require(groupId !in tasks && groupId !in groups) {
+      "Dag '$id' already has a task or task group with ID: $groupId"
+    }
+    return TaskGroupRef(this, groupId).also {
+      groups[groupId] = it
+      parent?.children?.add(it)
+    }
+  }
+
+  /**
+   * Turns every edge drawn to or from a task group into edges between tasks,
+   * and records it on the group as Python's `TaskGroup` does.
+   *
+   * A group upstream stands for its leaves and a group downstream for its
+   * roots, both read off the task edges alone. A group holding no tasks has
+   * neither, so the edge steps over it to the group edges beyond, as Python's
+   * `find_leaves` walk does. Runs once, so registering again changes nothing.
+   */
+  internal fun expandGroupEdges() {
+    if (groupEdgesExpanded) return
+    groupEdgesExpanded = true
+    val roots = groups.values.associateWith { it.roots() }
+    val leaves = groups.values.associateWith { it.leaves() }
+    val upstreamsOf = mutableMapOf<Any, MutableSet<Any>>()
+    val downstreamsOf = mutableMapOf<Any, MutableSet<Any>>()
+    for ((upstream, downstream) in groupEdges) {
+      downstreamsOf.getOrPut(upstream) { linkedSetOf() } += downstream
+      upstreamsOf.getOrPut(downstream) { linkedSetOf() } += upstream
+    }
+
+    fun tasksAt(
+      endpoint: Any,
+      asUpstream: Boolean,
+      seen: MutableSet<TaskGroupRef> = mutableSetOf(),
+    ): List<TaskDef> {
+      if (endpoint is TaskDef) return listOf(endpoint)
+      val group = endpoint as TaskGroupRef
+      val own = (if (asUpstream) leaves else roots).getValue(group)
+      if (own.isNotEmpty() || !seen.add(group)) return own
+      val beyond = if (asUpstream) upstreamsOf[group] else downstreamsOf[group]
+      return beyond.orEmpty().flatMap { tasksAt(it, asUpstream, seen) }
+    }
+
+    for ((upstream, downstream) in groupEdges) {
+      val from = tasksAt(upstream, asUpstream = true)
+      tasksAt(downstream, asUpstream = false).forEach { it.dependsOn(*from.toTypedArray()) }
+      if (downstream is TaskGroupRef) {
+        downstream.upstreamTaskIds += from.map { it.id }
+        if (upstream is TaskGroupRef) downstream.upstreamGroupIds += upstream.id
+      }
+      // When both ends are groups, the upstream records the downstream group
+      // only, not its tasks, which is how Python leaves it.
+      if (upstream is TaskGroupRef) {
+        if (downstream is TaskGroupRef) {
+          upstream.downstreamGroupIds += downstream.id
+        } else {
+          upstream.downstreamTaskIds += (downstream as TaskDef).id
+        }
+      }
+    }
   }
 }
 
@@ -241,3 +337,5 @@ interface Task {
     client: Client,
   )
 }
+
+private val GROUP_ID = Regex("[A-Za-z0-9_-]+")

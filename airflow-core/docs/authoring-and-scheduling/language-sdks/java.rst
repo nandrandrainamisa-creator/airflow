@@ -651,6 +651,46 @@ class that supplies only task bodies, for a Dag a Python file declares, carries
    for a run (see :ref:`java-sdk/arg-binding`), the binding at a parameter's position is what the
    task receives.  Wired inputs are the fallback, which is what a native Java Dag always uses.
 
+Task groups
+~~~~~~~~~~~
+
+A task group gathers tasks that the Airflow UI shows as one node, as Python's ``TaskGroup`` does.
+Everything declared in a group carries the group's ID as a prefix, so task ``stage`` in group
+``staging`` is the task ``staging.stage``.  On the interface surface, ``taskGroup`` declares a group on
+the Dag or inside another group, and the group declares its tasks:
+
+.. code-block:: java
+
+    var staging = dag.taskGroup("staging");
+    var stage = staging.task("stage", Stage.class);              // "staging.stage"
+    staging.taskGroup("checks").task("nulls", Nulls.class).after(stage); // "staging.checks.nulls"
+    extract.before(staging);
+
+With annotations, a ``@Builder.Task`` names its group with ``group``, the group's full ID, and the
+wiring class orders a whole group through ``group(...)``:
+
+.. code-block:: java
+
+    @Builder.Task(group = "staging")
+    public void stage() { ... }
+
+    @Builder.Task(id = "nulls", group = "staging.checks")
+    public void checkNulls() { ... }
+
+    @Builder.Deps
+    static class Wiring implements EtlPipelineDeps {
+      void depends() {
+        extract().before(group("staging"));
+        stage().before(checkNulls());
+      }
+    }
+
+A group stands at either end of ``before``, ``after`` and ``Flow.of``.  As an upstream it stands for
+its leaves, the tasks nothing else in the group runs after; as a downstream, for its roots, the tasks
+that run after nothing else in the group.  They are taken when the Dag is registered on a ``Bundle``,
+so a group's edges can be drawn before its tasks are declared.  A group ID contains only ASCII
+letters, digits, underscores, or dashes, and no task or other group in the Dag can share it.
+
 Configuration attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

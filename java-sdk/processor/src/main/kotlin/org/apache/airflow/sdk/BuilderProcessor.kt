@@ -234,13 +234,27 @@ class BuilderProcessor : AbstractProcessor() {
     explicitConfig(el, DAG_ANNOTATION, DAG_STRUCTURAL_ATTRIBUTES, SchemaFields.DAG).forEach { (key, value) ->
       buildMethod.addStatement($$"dag.config($S, $L)", key, value)
     }
-    buildMethod.addStatement(
-      $$"return $T.record(dag, $T.of($L), new $T()::depends)",
-      REFS_TYPE,
-      ClassName.get(List::class.java),
-      CodeBlock.join(declarations.map { CodeBlock.of($$"$S", it.id) }, ", "),
-      ClassName.get(deps),
-    )
+    val grouped = declarations.filter { it.group.isNotEmpty() }
+    val taskIds = CodeBlock.join(declarations.map { CodeBlock.of($$"$S", it.id) }, ", ")
+    if (grouped.isEmpty()) {
+      buildMethod.addStatement(
+        $$"return $T.record(dag, $T.of($L), new $T()::depends)",
+        REFS_TYPE,
+        LIST_TYPE,
+        taskIds,
+        ClassName.get(deps),
+      )
+    } else {
+      buildMethod.addStatement(
+        $$"return $T.record(dag, $T.of($L), $T.ofEntries($L), new $T()::depends)",
+        REFS_TYPE,
+        LIST_TYPE,
+        taskIds,
+        MAP_TYPE,
+        CodeBlock.join(grouped.map { CodeBlock.of($$"$T.entry($S, $S)", MAP_TYPE, it.id, it.group) }, ", "),
+        ClassName.get(deps),
+      )
+    }
     builderClass.addMethod(buildMethod.build())
 
     declarations.forEach { builderClass.addType(buildTask(it, el)) }
@@ -332,14 +346,20 @@ class BuilderProcessor : AbstractProcessor() {
       if (inner !is ExecutableElement) continue
       val ann = inner.getAnnotation(Builder.Task::class.java) ?: continue
       if (inner.isVarArgs) throw IllegalArgumentException("Cannot create task from vararg function ${inner.simpleName}")
-      val id = ann.id.ifBlank { inner.simpleName.toString() }
+      val group = ann.group
+      require(group.isEmpty() || group.split('.').all { GROUP_ID.matches(it) }) {
+        "Task method '${inner.simpleName}' names task group '$group'; each dot-separated part must " +
+          "contain only ASCII letters, digits, underscores, or dashes"
+      }
+      val localId = ann.id.ifBlank { inner.simpleName.toString() }
+      val id = if (group.isEmpty()) localId else "$group.$localId"
       require(declarations.none { it.id == id }) { "Tasks in Dag have duplicate ID: $id" }
       require(declarations.none { it.method.simpleName.contentEquals(inner.simpleName) }) {
         "Dag class ${el.simpleName} overloads task method '${inner.simpleName}'; a method's name is the " +
           "name of its generated task class and of its wiring-view method, so rename one and keep its " +
-          "task id with @Builder.Task(id = \"$id\")"
+          "task id with @Builder.Task(id = \"$localId\")"
       }
-      declarations += TaskDeclaration(inner, id, collectDataParams(inner))
+      declarations += TaskDeclaration(inner, id, collectDataParams(inner), group)
     }
     return declarations
   }
@@ -687,6 +707,7 @@ private class TaskDeclaration(
   val method: ExecutableElement,
   val id: String,
   val dataParams: List<DataParam>,
+  val group: String = "",
 ) {
   val className: String = method.simpleName.toString().replaceFirstChar(Char::uppercase)
 }
@@ -717,6 +738,10 @@ private val REFS_TYPE = ClassName.get(Refs::class.java)
 private val ARG_TYPE = ClassName.get(Arg::class.java)
 private val TASK_HANDLE_TYPE = ClassName.get(TaskRef::class.java)
 private val DEPS_TYPE = ClassName.get(Deps::class.java)
+private val LIST_TYPE = ClassName.get(List::class.java)
+private val MAP_TYPE = ClassName.get(Map::class.java)
+
+private val GROUP_ID = Regex("[A-Za-z0-9_-]+")
 
 private const val DAG_ANNOTATION = "org.apache.airflow.sdk.Builder.Dag"
 private const val TASK_ANNOTATION = "org.apache.airflow.sdk.Builder.Task"
@@ -724,6 +749,7 @@ private const val TASK_ANNOTATION = "org.apache.airflow.sdk.Builder.Task"
 private val RESERVED_VIEW_NAMES =
   setOf(
     "depends",
+    "group",
     "lit",
     "clone",
     "equals",
@@ -737,7 +763,7 @@ private val RESERVED_VIEW_NAMES =
   )
 
 private val DAG_STRUCTURAL_ATTRIBUTES = setOf("id", "to")
-private val TASK_STRUCTURAL_ATTRIBUTES = setOf("id")
+private val TASK_STRUCTURAL_ATTRIBUTES = setOf("id", "group")
 
 private fun TypeName.boxIfPossible(): TypeName = if (this == TypeName.VOID || isPrimitive) box() else this
 

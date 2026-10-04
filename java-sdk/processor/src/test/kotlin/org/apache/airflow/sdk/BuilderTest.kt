@@ -1277,6 +1277,67 @@ class BuilderTest {
   }
 
   @Test
+  @DisplayName("register grouped tasks in their groups through the wiring")
+  fun generateBuilderWithGroupedTasks() {
+    val compilation =
+      compile(
+        """
+        package org.apache.airflow.example;
+        import org.apache.airflow.sdk.Builder;
+        @Builder.Dag
+        public class TestExample {
+          @Builder.Task public void extract() {}
+          @Builder.Task(group = "staging") public void stage() {}
+          @Builder.Task(id = "nulls", group = "staging.checks") public void checkNulls() {}
+
+          @Builder.Deps
+          static class Wiring implements TestExampleDeps {
+            void depends() {
+              extract().before(group("staging"));
+              stage().before(checkNulls());
+            }
+          }
+        }
+      """,
+      )
+
+    assertThat(compilation).succeeded()
+    assertThat(compilation)
+      .generatedSourceFile("org.apache.airflow.example.TestExampleBuilder")
+      .contentsAsUtf8String()
+      .contains(
+        "return Refs.record(dag, List.of(\"extract\", \"staging.stage\", \"staging.checks.nulls\"), " +
+          "Map.ofEntries(Map.entry(\"staging.stage\", \"staging\"), " +
+          "Map.entry(\"staging.checks.nulls\", \"staging.checks\")), new TestExample.Wiring()::depends);",
+      )
+    assertThat(compilation)
+      .generatedSourceFile("org.apache.airflow.example.TestExampleDeps")
+      .contentsAsUtf8String()
+      .contains("new TaskDef(\"staging.checks.nulls\", TestExampleBuilder.CheckNulls.class)")
+  }
+
+  @Test
+  @DisplayName("reject a task group ID that is not dot-separated identifiers")
+  fun rejectInvalidTaskGroupId() {
+    val compilation =
+      compile(
+        """
+        package org.apache.airflow.example;
+        import org.apache.airflow.sdk.Builder;
+        @Builder.Dag
+        public class TestExample {
+          @Builder.Task(group = "staging..checks") public void t1() {}
+        }
+      """,
+      )
+    assertThat(compilation).failed()
+    assertThat(compilation).hadErrorContaining(
+      "Task method 't1' names task group 'staging..checks'; each dot-separated part must " +
+        "contain only ASCII letters, digits, underscores, or dashes",
+    )
+  }
+
+  @Test
   @DisplayName("generate builder for dag class with varargs task parameter")
   fun generateBuilderForDagClassWithVarArgsTaskParameter() {
     val compilation =
