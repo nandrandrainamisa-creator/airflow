@@ -21,7 +21,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any, Final, Literal
 from uuid import UUID
 
@@ -97,7 +97,7 @@ class ResultMessage(RootModel[str]):
     root: Annotated[str, Field(max_length=2000, title="Result Message")]
 
 
-class ConnectionTestState(str, Enum):
+class ConnectionTestState(StrEnum):
     """
     All possible states of a connection test.
     """
@@ -158,7 +158,7 @@ class DagRunNoteUpdatePayload(BaseModel):
     note: Annotated[Note | None, Field(title="Note")] = None
 
 
-class DagRunState(str, Enum):
+class DagRunState(StrEnum):
     """
     All possible states that a DagRun can be in.
 
@@ -181,7 +181,7 @@ class DagRunStateResponse(BaseModel):
     state: DagRunState
 
 
-class DagRunType(str, Enum):
+class DagRunType(StrEnum):
     """
     Class with DagRun types.
     """
@@ -219,7 +219,7 @@ class InactiveAssetsResponse(BaseModel):
     inactive_assets: Annotated[list[AssetProfile] | None, Field(title="Inactive Assets")] = None
 
 
-class IntermediateTIState(str, Enum):
+class IntermediateTIState(StrEnum):
     """
     States that a Task Instance can be in that indicate it is not yet in a terminal or running state.
     """
@@ -394,7 +394,7 @@ class TaskBreadcrumbsResponse(BaseModel):
     breadcrumbs: Annotated[list[dict[str, Any]], Field(title="Breadcrumbs")]
 
 
-class TaskInstanceState(str, Enum):
+class TaskInstanceState(StrEnum):
     """
     All possible states that a Task Instance can be in.
 
@@ -447,7 +447,7 @@ class TaskStatesResponse(BaseModel):
     task_states: Annotated[dict[str, Any], Field(title="Task States")]
 
 
-class TerminalStateNonSuccess(str, Enum):
+class TerminalStateNonSuccess(StrEnum):
     """
     TaskInstance states that can be reported without extra information.
     """
@@ -589,7 +589,7 @@ class BundleInfo(BaseModel):
     version_data: Annotated[dict[str, Any] | None, Field(title="Version Data")] = None
 
 
-class TerminalTIState(str, Enum):
+class TerminalTIState(StrEnum):
     SUCCESS = "success"
     FAILED = "failed"
     SKIPPED = "skipped"
@@ -597,13 +597,13 @@ class TerminalTIState(str, Enum):
     REMOVED = "removed"
 
 
-class WeightRule(str, Enum):
+class WeightRule(StrEnum):
     DOWNSTREAM = "downstream"
     UPSTREAM = "upstream"
     ABSOLUTE = "absolute"
 
 
-class TriggerRule(str, Enum):
+class TriggerRule(StrEnum):
     ALL_SUCCESS = "all_success"
     ALL_FAILED = "all_failed"
     ALL_DONE = "all_done"
@@ -619,7 +619,7 @@ class TriggerRule(str, Enum):
     ALL_SKIPPED = "all_skipped"
 
 
-class DagAttributeTypes(str, Enum):
+class DagAttributeTypes(StrEnum):
     OP = "operator"
     TASK_GROUP = "taskgroup"
 

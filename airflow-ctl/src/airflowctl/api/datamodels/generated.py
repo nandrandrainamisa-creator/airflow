@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
@@ -99,7 +99,7 @@ class AssetExpressionRef(BaseModel):
     asset_ref: Annotated[dict[str, str], Field(title="Asset Ref")]
 
 
-class AssetStateStoreWriterKind(str, Enum):
+class AssetStateStoreWriterKind(StrEnum):
     """
     Identifies what kind of writer last updated an asset state store entry.
 
@@ -135,7 +135,7 @@ class AsyncConnectionTestResponse(BaseModel):
     created_at: Annotated[datetime, Field(title="Created At")]
 
 
-class BulkActionNotOnExistence(str, Enum):
+class BulkActionNotOnExistence(StrEnum):
     """
     Bulk Action to be taken if the entity does not exist.
     """
@@ -144,7 +144,7 @@ class BulkActionNotOnExistence(str, Enum):
     SKIP = "skip"
 
 
-class BulkActionOnExistence(str, Enum):
+class BulkActionOnExistence(StrEnum):
     """
     Bulk Action to be taken if the entity already exists or not.
     """
@@ -686,7 +686,7 @@ class DagRunAssetReference(BaseModel):
     ]
 
 
-class DagRunMutableStates(str, Enum):
+class DagRunMutableStates(StrEnum):
     """
     Dag Run states from which the run may be mutated (patched, deleted).
     """
@@ -696,7 +696,7 @@ class DagRunMutableStates(str, Enum):
     FAILED = "failed"
 
 
-class DagRunState(str, Enum):
+class DagRunState(StrEnum):
     """
     All possible states that a DagRun can be in.
 
@@ -711,7 +711,7 @@ class DagRunState(str, Enum):
     FAILED = "failed"
 
 
-class DagRunTriggeredByType(str, Enum):
+class DagRunTriggeredByType(StrEnum):
     """
     Class with TriggeredBy types for DagRun.
     """
@@ -726,7 +726,7 @@ class DagRunTriggeredByType(str, Enum):
     BACKFILL = "backfill"
 
 
-class DagRunType(str, Enum):
+class DagRunType(StrEnum):
     """
     Class with DagRun types.
     """
@@ -753,7 +753,7 @@ class DagScheduleAssetReference(BaseModel):
     team_name: Annotated[str | None, Field(title="Team Name")] = None
 
 
-class DagSchedulingState(str, Enum):
+class DagSchedulingState(StrEnum):
     """
     States controlling whether a Dag can create and schedule work.
     """
@@ -782,7 +782,7 @@ class DagTagResponse(BaseModel):
     dag_display_name: Annotated[str, Field(title="Dag Display Name")]
 
 
-class DagVersionDiffCategory(str, Enum):
+class DagVersionDiffCategory(StrEnum):
     """
     What part of a Dag a difference belongs to. Mirrors ``DiffCategory``.
     """
@@ -800,7 +800,7 @@ class DagVersionDiffCategory(str, Enum):
     UNKNOWN = "unknown"
 
 
-class DagVersionDiffImpact(str, Enum):
+class DagVersionDiffImpact(StrEnum):
     """
     What a difference affects. Mirrors ``DiffImpact``.
     """
@@ -812,7 +812,7 @@ class DagVersionDiffImpact(str, Enum):
     UNKNOWN = "unknown"
 
 
-class DagVersionDiffMode(str, Enum):
+class DagVersionDiffMode(StrEnum):
     """
     Whether a comparison could be made at all.
     """
@@ -821,7 +821,7 @@ class DagVersionDiffMode(str, Enum):
     UNAVAILABLE = "unavailable"
 
 
-class DagVersionDiffOperation(str, Enum):
+class DagVersionDiffOperation(StrEnum):
     """
     How a difference presents at its path.
     """
@@ -843,7 +843,7 @@ class DagVersionDiffSerializerVersions(BaseModel):
     target: Annotated[int | None, Field(title="Target")]
 
 
-class DagVersionDiffValuesStatus(str, Enum):
+class DagVersionDiffValuesStatus(StrEnum):
     """
     Whether values were disclosed. Mirrors ``ValuesStatus``.
     """
@@ -867,7 +867,7 @@ class DagVersionResponse(BaseModel):
     bundle_url: Annotated[str | None, Field(title="Bundle Url")]
 
 
-class DagWarningType(str, Enum):
+class DagWarningType(StrEnum):
     """
     Enum for DAG warning types.
 
@@ -881,7 +881,7 @@ class DagWarningType(str, Enum):
     RUNTIME_VARYING_VALUE = "runtime varying value"
 
 
-class DetailedHealthStatus(str, Enum):
+class DetailedHealthStatus(StrEnum):
     """
     How much of a component's work has a live instance covering it.
     """
@@ -931,7 +931,7 @@ class ExternalLogUrlResponse(BaseModel):
     url: Annotated[str, Field(title="Url")]
 
 
-class Destination(str, Enum):
+class Destination(StrEnum):
     NAV = "nav"
     DAG = "dag"
     DAG_RUN = "dag_run"
@@ -992,7 +992,7 @@ class HTTPExceptionResponse(BaseModel):
     detail: Annotated[str | dict[str, Any], Field(title="Detail")]
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """
     Aggregate health of a component: whether it has at least one live instance.
     """
@@ -1184,7 +1184,7 @@ class QueuedEventResponse(BaseModel):
     dag_display_name: Annotated[str, Field(title="Dag Display Name")]
 
 
-class Destination1(str, Enum):
+class Destination1(StrEnum):
     NAV = "nav"
     DAG = "dag"
     DAG_RUN = "dag_run"
@@ -1216,7 +1216,7 @@ class ReactAppResponse(BaseModel):
     destination: Annotated[Destination1 | None, Field(title="Destination")] = "nav"
 
 
-class ReprocessBehavior(str, Enum):
+class ReprocessBehavior(StrEnum):
     """
     Internal enum for setting reprocess behavior in a backfill.
 
@@ -1272,7 +1272,7 @@ class TaskInletAssetReference(BaseModel):
     updated_at: Annotated[datetime, Field(title="Updated At")]
 
 
-class TaskInstanceState(str, Enum):
+class TaskInstanceState(StrEnum):
     """
     All possible states that a Task Instance can be in.
 
